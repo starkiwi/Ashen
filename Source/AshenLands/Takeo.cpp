@@ -30,7 +30,7 @@ ATakeo::ATakeo()
 	SideCamera->bAutoActivate = true;
 }
 
-// --------------------- INPUT --------------------------------
+// --------------------------- INPUT ----------------------------------------------
 void ATakeo::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -38,6 +38,7 @@ void ATakeo::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ATakeo::MoveInput);
+		EnhancedInputComponent->BindAction(DashAction, ETriggerEvent::Triggered, this, &ATakeo::DashInput);
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &ATakeo::AttackInput);
 	}
 }
@@ -49,6 +50,47 @@ void ATakeo::MoveInput(const FInputActionValue& InValue)
 	this->AddMovementInput(FVector(1, 0, 0), MoveActionValue.X);
 	// y movement
 	this->AddMovementInput(FVector(0, -1, 0), MoveActionValue.Y);
+}
+
+void ATakeo::DashInput(const FInputActionValue& InValue)
+{
+	if (!IsAttacking && !IsDashing)
+	{
+		UKismetSystemLibrary::PrintString(
+			this, // World context object
+			"DASH", // Message
+			true, // Print to screen?
+			true, // Print to console?
+			FLinearColor(0.0f, 0.66f, 1.0f, 1.0f), // Color
+			1.0f // Duration
+		);
+
+
+		IsDashing = true;
+		// setup animation like attacking - jump to node (in blueprints)
+		LaunchCharacter(FindDashDirection(), true, false);
+
+		//set cooldown timer
+		GetWorldTimerManager().SetTimer(
+			TimerHandle,
+			this,
+			&ATakeo::DashReset,
+			DashCooldown,
+			false
+		);
+	}
+}
+
+FVector ATakeo::FindDashDirection()
+{
+	// multiply y by -1 because of paper 2d shenanigans 
+	FVector DashDirection = FVector(MoveActionValue.X, (MoveActionValue.Y * -1), 0) * DashStrength;
+	return DashDirection;
+}
+
+void ATakeo::DashReset()
+{
+	IsDashing = false;
 }
 
 void ATakeo::AttackInput(const FInputActionValue& InValue)
@@ -70,7 +112,8 @@ void ATakeo::AttackInput(const FInputActionValue& InValue)
 	}
 }
 
-// -------------------- ATTACK -------------------------------
+// ------------------------------- ATTACK -----------------------------------
+
 void ATakeo::OnPrimaryAttack_Implementation()
 {
 	UKismetSystemLibrary::PrintString(
@@ -81,21 +124,21 @@ void ATakeo::OnPrimaryAttack_Implementation()
 		FLinearColor(0.0f, 0.66f, 1.0f, 1.0f), // Color
 		1.0f // Duration
 	);
-	
-	
+
+
 	TArray<FHitResult> OutResults;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(TakeoPrimaryAttack), false, this);
-	
+
 	FCollisionShape MySphere = FCollisionShape::MakeSphere(AttackRadius);
 	const bool bHit = GetWorld()->SweepMultiByChannel(
-		OutResults, 
-		GetActorLocation(), 
-		FindAttackOffset(), 
-		FQuat::Identity, 
-		ECC_GameTraceChannel2, 
+		OutResults,
+		GetActorLocation(),
+		FindAttackOffset(),
+		FQuat::Identity,
+		ECC_GameTraceChannel2,
 		MySphere,
 		Params);
-	
+
 	DrawDebugSphereTraceMulti(
 		GetWorld(),
 		GetActorLocation(),
@@ -107,20 +150,20 @@ void ATakeo::OnPrimaryAttack_Implementation()
 		FColor(255, 0, 0),
 		FColor(255, 0, 0),
 		1.0f
-		);
-	
+	);
+
 	// for (const FHitResult& Hit : OutResults)
 	// {
 	// 	AActor* HitActor = Hit.GetActor();
 	// 	if (!IsValid(HitActor)) continue; // this guard is the one that matters
- //
+	//
 	// 	// Apply damage, etc.
-	
 }
 
 FVector ATakeo::FindAttackOffset()
 {
-	FVector OffsetCalc = FVector((MoveActionValue.X * AttackOffset.X), (MoveActionValue.Y * AttackOffset.Y), 0);
+	// multiply y by -1 for paper 2d shenanigans 
+	FVector OffsetCalc = FVector((MoveActionValue.X * AttackOffset.X), (MoveActionValue.Y * AttackOffset.Y * -1), 0);
 	return GetActorLocation() + OffsetCalc;
 }
 
@@ -129,6 +172,8 @@ void ATakeo::AttackReset()
 	IsAttacking = false;
 	GetCharacterMovement()->MovementMode = MOVE_Walking;
 }
+
+// -------------------------- BASE METHODS ---------------------------------------
 
 void ATakeo::BeginPlay()
 {

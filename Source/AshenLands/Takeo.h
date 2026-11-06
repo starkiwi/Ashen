@@ -44,7 +44,7 @@ protected:
 	
 public:
 	
-	// ------------------ Camera -----------------------------------
+	// ------------------------------- Camera -----------------------------------------
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
 	class UCameraComponent* SideCamera;
 
@@ -53,7 +53,7 @@ public:
 	
 	
 	
-	// -------------------  Input  --------------------------------
+	// --------------------------------  Input  ----------------------------------------
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	UInputMappingContext* InputMappingContext;
 
@@ -61,7 +61,18 @@ public:
 	class UInputAction* MoveAction;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+	class UInputAction* DashAction;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	class UInputAction* AttackAction;
+	
+	bool IsDashing = false;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Input)
+	float DashStrength = 500.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Attack)
+	float DashCooldown = 1.0f;
 	
 protected:
 	// Sets up controller and actions
@@ -71,6 +82,13 @@ protected:
 
 	// Handles input for move
 	void MoveInput(const FInputActionValue& InValue);
+	
+	// Handles input for dash
+	void DashInput(const FInputActionValue& InValue);
+	
+	FVector FindDashDirection();
+	
+	void DashReset();
 	
 	// Handles input for attack (animation handled in blueprint)
 	void AttackInput(const FInputActionValue& InValue);
